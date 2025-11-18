@@ -2,14 +2,14 @@
 # AWS Bootstrap Infrastructure - Makefile
 # =============================================================================
 
-.PHONY: help bootstrap-create-backend bootstrap-init bootstrap-plan bootstrap-apply bootstrap-output setup-backend sync-env
+.PHONY: help bootstrap-create bootstrap-init bootstrap-plan bootstrap-apply bootstrap-output setup-terraform-backend sync-env
 
 # Default target
 help:
 	@echo "AWS Bootstrap Infrastructure Commands"
 	@echo ""
 	@echo "Bootstrap (one-time setup):"
-	@echo "  make bootstrap-create-backend  Create S3 bucket for Terraform state (run first!)"
+	@echo "  make bootstrap-create  		Create S3 bucket for Terraform state (run first!)"
 	@echo "  make bootstrap-init            Initialize bootstrap Terraform"
 	@echo "  make bootstrap-plan            Plan bootstrap changes"
 	@echo "  make bootstrap-apply           Apply bootstrap infrastructure"
@@ -17,8 +17,8 @@ help:
 	@echo "  make bootstrap-destroy         Destroy bootstrap infrastructure (DANGER!)"
 	@echo ""
 	@echo "Setup:"
-	@echo "  make setup-backend           Generate backend configs for application Terraform"
-	@echo "  make setup-app-terraform     Generate example application Terraform files"
+	@echo "  make setup-terraform-backend	Generate backend configs for application Terraform"
+	@echo "  make setup-terraform-lambda    Generate example lambda Terraform files"
 	@echo "  make setup-workflows         Generate GitHub Actions workflows"
 	@echo "  make setup-pre-commit        Setup pre-commit hooks (Ruff + Pyright)"
 	@echo "  make sync-env                Sync terraform.tfvars to .env file"
@@ -53,7 +53,7 @@ help:
 # Bootstrap Commands
 # =============================================================================
 
-bootstrap-create-backend:
+bootstrap-create:
 	@echo "🪣 Creating S3 backend for Terraform state..."
 	@echo ""
 	@# Read configuration from terraform.tfvars
@@ -103,7 +103,7 @@ bootstrap-create-backend:
 	fi; \
 	\
 	echo ""; \
-	echo "✅ Backend ready! Next steps:"; \
+	echo "✅ Bootstarp ready! Next steps:"; \
 	echo "   1. Run: make bootstrap-init"; \
 	echo "   2. Run: make bootstrap-apply"
 
@@ -171,7 +171,7 @@ bootstrap-apply:
 	cd bootstrap && terraform apply
 	@echo ""
 	@echo "✅ Bootstrap complete! Next steps:"
-	@echo "   make setup-backend"
+	@echo "   make setup-terraform-backend"
 	@echo "   make setup-workflows"
 
 bootstrap-output:
@@ -198,13 +198,13 @@ bootstrap-destroy:
 # Setup Commands
 # =============================================================================
 
-setup-backend:
+setup-terraform-backend:
 	@echo "📝 Generating Terraform backend configurations..."
 	./scripts/setup-terraform-backend.sh
 
-setup-app-terraform:
-	@echo "🏗️  Generating example application Terraform files..."
-	./scripts/setup-application-terraform.sh
+setup-terraform-lambda:
+	@echo "🏗️  Generating example lambda Terraform files..."
+	./scripts/setup-terraform-lambda.sh
 
 setup-workflows:
 	@echo "🔄 Generating GitHub Actions workflows..."

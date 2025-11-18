@@ -68,7 +68,7 @@ use_uv_builder = true     # Use uv for dependency management (recommended)
 
 # List of ECR repository names to create
 # If empty, will create one repo named after project_name
-ecr_repositories = []  # Example: ["api", "worker", "frontend"]
+ecr_repositories = ["api"]  # Example: ["api", "worker", "frontend"]
 
 # Number of images to keep in ECR (older images are deleted)
 ecr_image_retention_count = 10

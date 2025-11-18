@@ -151,7 +151,7 @@ aws sts get-caller-identity  # Verify AWS credentials
 ### 3. Deploy Bootstrap Infrastructure
 
 ```bash
-make bootstrap-create-backend  # Create S3 state bucket
+make bootstrap-create          # Create S3 state bucket
 make bootstrap-init            # Initialize Terraform
 make bootstrap-plan            # Review changes
 make bootstrap-apply           # Deploy infrastructure
@@ -167,9 +167,9 @@ make bootstrap-apply           # Deploy infrastructure
 ### 4. Deploy App (Lambda) Infrastructure
 
 ```bash
-make setup-backend        # Generate backend configs
-make setup-app-terraform  # Generate example Lambda app Terraform files (optional)
-make sync-env             # Sync to .env file (optional)
+make setup-terraform-backend  # Generate backend Terraform files
+make setup-terraform-lambda   # Generate example Lambda app Terraform files (optional)
+make sync-env                 # Sync to .env file (optional)
 ```
 
 This creates ready-to-use Terraform files in `terraform/` for deploying Lambda functions with container images. See [Setting Up Application Infrastructure](docs/TERRAFORM-BOOTSTRAP.md#-setting-up-application-infrastructure) for details.
@@ -366,8 +366,8 @@ All Dockerfiles support building for both arm64 and amd64 architectures:
 **Prerequisites:**
 
 1. ✅ **Bootstrap infrastructure deployed** (`make bootstrap-apply`)
-2. ✅ **Backend configs generated** (`make setup-backend`)
-3. ✅ **Application Terraform files created** (`make setup-app-terraform` - optional, for Lambda)
+2. ✅ **Backend configs generated** (`make setup-terraform-backend`)
+3. ✅ **Application Terraform files created** (`make setup-terraform-lambda` - optional, for Lambda)
 4. ✅ **GitHub repository secrets configured** (see bootstrap output)
 
 **Deployment workflow:**
@@ -536,10 +536,10 @@ curl -X POST https://<function-url> \
 │  PHASE 1: Bootstrap (One-time setup)                        │
 │                                                             │
 │  1. Configure: cp bootstrap/terraform.tfvars.example ...    │
-│  2. Create S3: make bootstrap-create-backend                │
+│  2. Create S3: make bootstrap-create                │
 │  3. Initialize: make bootstrap-init                         │
 │  4. Deploy: make bootstrap-apply                            │
-│  5. Setup: make setup-backend                               │
+│  5. Setup: make setup-terraform-backend                               │
 │                                                             │
 │  Creates: S3, ECR, IAM roles, OIDC provider                 │
 └──────────────────────┬──────────────────────────────────────┘
@@ -570,7 +570,7 @@ curl -X POST https://<function-url> \
 ┌─────────────────────────────────────────────────────────────┐
 │  PHASE 4: Deploy Infrastructure                             │
 │                                                             │
-│  1. Generate: make setup-app-terraform  (optional)          │
+│  1. Generate: make setup-terraform-lambda  (optional)          │
 │  2. Init:     make app-init-dev                             │
 │  3. Plan:     make app-plan-dev                             │
 │  4. Deploy:   make app-apply-dev                            │
@@ -659,6 +659,7 @@ enable_apprunner = false
 enable_eks       = false
 
 lambda_use_container_image = true
+ecr_repositories = ["api"]
 python_version = "3.13"
 ```
 
@@ -677,7 +678,7 @@ enable_lambda    = false
 enable_apprunner = true
 enable_eks       = false
 
-ecr_repositories = ["web", "worker"]
+ecr_repositories = ["api", "web", "worker"]
 python_version   = "3.13"
 ```
 
@@ -794,7 +795,7 @@ make bootstrap-destroy   # Destroy (DANGER!)
 
 ### Setup
 ```bash
-make setup-backend      # Generate backend configs
+make setup-terraform-backend      # Generate backend configs
 make setup-workflows    # Generate GitHub Actions workflows
 ```
 
@@ -1068,7 +1069,7 @@ This repository includes comprehensive documentation for all aspects of the boot
 
 - **[⚙️ Scripts Documentation](docs/SCRIPTS.md)** - Automation scripts
   - `setup-terraform-backend.sh` - Generate backend configs
-  - `setup-application-terraform.sh` - Generate example Lambda Terraform files
+  - `setup-terraform-lambda.sh` - Generate example Lambda Terraform files
   - `generate-workflows.sh` - Create GitHub Actions workflows
   - `docker-push.sh` - Build and push Docker images
   - `setup-pre-commit.sh` - Install code quality hooks

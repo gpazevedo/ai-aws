@@ -165,7 +165,7 @@ See [Configuration Examples](#-configuration-examples) for complete scenarios.
 # - Versioning enabled (for S3 locking, no DynamoDB!)
 # - AES256 encryption
 # - Public access blocked
-make bootstrap-create-backend
+make bootstrap-create
 ```
 
 #### Step 3: Initialize Terraform
@@ -188,10 +188,10 @@ make bootstrap-plan
 make bootstrap-apply
 
 # Generate backend configs for application Terraform
-make setup-backend
+make setup-terraform-backend
 
 # (Optional) Generate example application Terraform files
-make setup-app-terraform
+make setup-terraform-lambda
 
 # (Optional) Sync to .env file
 make sync-env
@@ -267,7 +267,7 @@ For a quick start with Lambda-based applications, use the built-in generator:
 
 ```bash
 # Generate example Terraform files for Lambda deployment
-make setup-app-terraform
+make setup-terraform-lambda
 ```
 
 **This creates:**
@@ -399,14 +399,14 @@ enable_api_gateway = true  # Change from false to true
 
 **Pattern 1: REST API (Lambda + Function URL)**
 ```bash
-make setup-app-terraform
+make setup-terraform-lambda
 # Edit terraform/lambda.tf to add your API logic
 make app-apply-dev
 ```
 
 **Pattern 2: REST API (Lambda + API Gateway)**
 ```bash
-make setup-app-terraform
+make setup-terraform-lambda
 # Set enable_api_gateway = true in terraform/environments/dev.tfvars
 make app-apply-dev
 ```
@@ -421,7 +421,7 @@ make app-init-dev
 make app-apply-dev
 ```
 
-See [terraform/README.md](../terraform/README.md) after running `make setup-app-terraform` for detailed application infrastructure documentation.
+See [terraform/README.md](../terraform/README.md) after running `make setup-terraform-lambda` for detailed application infrastructure documentation.
 
 ---
 

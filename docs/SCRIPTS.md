@@ -46,7 +46,7 @@ make setup-pre-commit
 ```bash
 ./scripts/setup-terraform-backend.sh
 # or
-make setup-backend
+make setup-terraform-backend
 ```
 
 **What it does**:
@@ -73,17 +73,17 @@ use_lockfile = true
 
 ---
 
-### 3. `setup-application-terraform.sh`
+### 3. `setup-terraform-lambda.sh`
 
 **Purpose**: Generates example Terraform configuration files for Lambda-based application infrastructure.
 
-**Location**: `scripts/setup-application-terraform.sh`
+**Location**: `scripts/setup-terraform-lambda.sh`
 
 **Usage**:
 ```bash
-./scripts/setup-application-terraform.sh
+./scripts/setup-terraform-lambda.sh
 # or
-make setup-app-terraform
+make setup-terraform-lambda
 ```
 
 **What it does**:
@@ -124,7 +124,7 @@ After generation, you can:
 **Example workflow**:
 ```bash
 # 1. Generate application Terraform files
-make setup-app-terraform
+make setup-terraform-lambda
 
 # 2. Customize the generated files
 vim terraform/environments/dev.tfvars
@@ -312,9 +312,8 @@ The script automatically detects your ECR configuration and uses appropriate rep
 
 | ECR Configuration | Lambda Workflows Use | EKS Workflows Use |
 |-------------------|---------------------|-------------------|
-| `ecr_repositories = []` | First repo (e.g., `my-project`) | Same repo |
-| `ecr_repositories = ["lambda", "eks"]` | `my-project-lambda` | `my-project-eks` |
-| `ecr_repositories = ["api", "worker"]` | First repo (`my-project-api`) | First repo |
+| `ecr_repositories = ["api"]` | First repo (e.g., `my-project-api`) | Same repo |
+| `ecr_repositories = ["api", "eks"]` | `my-project-api` | `my-project-eks` |
 
 **Detection logic:**
 1. Searches for repo name containing "lambda" → uses for Lambda
@@ -462,7 +461,7 @@ docker-compose --env-file .env up
 make bootstrap-apply
 
 # 2. Generate backend configs
-make setup-backend
+make setup-terraform-backend
 
 # 3. Sync tfvars to .env
 make sync-env
