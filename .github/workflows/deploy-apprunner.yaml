@@ -1,0 +1,174 @@
+name: Deploy App Runner
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to deploy to'
+        required: true
+        default: 'dev'
+        type: choice
+        options:
+          - dev
+          - production
+          - test
+  push:
+    branches: [main]
+    paths:
+      - 'backend/**'
+env:
+  PROJECT_NAME: ${{ secrets.PROJECT_NAME }}
+  AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
+  AWS_REGION: ${{ secrets.AWS_REGION }}
+  ENVIRONMENT: ${{ inputs.environment || 'dev' }}
+  # Array of services to deploy (only these services will be deployed as App Runner if changed)
+  APPRUNNER_SERVICES: ${{ vars.APPRUNNER_SERVICES || '["api"]' }}
+
+jobs:
+  # Detect which services changed
+  detect-changes:
+    runs-on: ubuntu-latest
+    outputs:
+      services: ${{ steps.filter-services.outputs.services }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Need full history to detect changes
+
+      - name: Detect changed services
+        id: filter-services
+        run: |
+          echo "APPRUNNER_SERVICES configuration: $APPRUNNER_SERVICES"
+
+          # Parse APPRUNNER_SERVICES array
+          SERVICES_ARRAY=$(echo "$APPRUNNER_SERVICES" | jq -c '.')
+          echo "Services to check: $SERVICES_ARRAY"
+
+          # Detect changed files
+          if [ "${{ github.event_name }}" == "push" ]; then
+            CHANGED_FILES=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} || echo "")
+          else
+            # For workflow_dispatch, check against main branch
+            CHANGED_FILES=$(git diff --name-only origin/main HEAD || echo "")
+          fi
+
+          echo "Changed files:"
+          echo "$CHANGED_FILES"
+
+          # Find which services from APPRUNNER_SERVICES have changes
+          CHANGED_SERVICES="[]"
+
+          for service in $(echo "$SERVICES_ARRAY" | jq -r '.[]'); do
+            echo "Checking service: $service"
+
+            # Check if this service has changes in:
+            # - backend/$service/**
+            # - backend/Dockerfile.apprunner
+            # - .github/workflows/**
+            if echo "$CHANGED_FILES" | grep -qE "(^backend/$service/)"; then
+              echo "  ✓ Service $service has changes"
+              CHANGED_SERVICES=$(echo "$CHANGED_SERVICES" | jq -c ". + [\"$service\"]")
+            else
+              echo "  ✗ Service $service has no changes"
+            fi
+          done
+
+          echo "Services to deploy: $CHANGED_SERVICES"
+          echo "services=$CHANGED_SERVICES" >> $GITHUB_OUTPUT
+
+
+  deploy:
+    needs: detect-changes
+    if: ${{ needs.detect-changes.outputs.services != '[]' }}
+    runs-on: ubuntu-latest
+    environment: ${{ inputs.environment || 'dev' }}
+    permissions:
+      id-token: write
+      contents: read
+    strategy:
+      matrix:
+        service: ${{ fromJSON(needs.detect-changes.outputs.services) }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ env.AWS_ACCOUNT_ID }}:role/${{ env.PROJECT_NAME }}-github-actions-${{ env.ENVIRONMENT }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Build and push App Runner Docker image
+        run: |
+          # Use centralized docker-push.sh script for consistent builds
+          ./scripts/docker-push.sh ${{ env.ENVIRONMENT }} ${{ matrix.service }} Dockerfile.apprunner
+
+      - name: Update App Runner service
+        run: |
+          # Use the service-environment-latest tag for App Runner deployments
+          ECR_REGISTRY="${{ env.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com"
+          IMAGE_URI="${ECR_REGISTRY}/${{ env.PROJECT_NAME }}:${{ matrix.service }}-${{ env.ENVIRONMENT }}-latest"
+
+          # Find the service ARN by name
+          SERVICE_NAME="${{ env.PROJECT_NAME }}-${{ env.ENVIRONMENT }}-${{ matrix.service }}"
+
+          echo "Looking for App Runner service: ${SERVICE_NAME}"
+
+          # List all services and find the one matching our name
+          SERVICE_ARN=$(aws apprunner list-services \
+            --query "ServiceSummaryList[?ServiceName=='${SERVICE_NAME}'].ServiceArn" \
+            --output text)
+
+          if [ -z "$SERVICE_ARN" ]; then
+            echo "⚠️ Service ${SERVICE_NAME} does not exist"
+            echo "Please create the App Runner service first using Terraform"
+            echo "Run: make app-init-${{ env.ENVIRONMENT }} && make app-apply-${{ env.ENVIRONMENT }}"
+            exit 1
+          fi
+
+          echo "Found service ARN: ${SERVICE_ARN}"
+          echo "Triggering deployment..."
+
+          # Start a new deployment (this will pull the latest image from ECR)
+          aws apprunner start-deployment --service-arn "${SERVICE_ARN}"
+
+          echo "Deployment started for ${SERVICE_NAME}"
+          echo "SERVICE_ARN=${SERVICE_ARN}" >> $GITHUB_ENV
+
+      - name: Wait for deployment to complete
+        run: |
+          echo "Waiting for deployment to complete..."
+          echo "Service ARN: ${SERVICE_ARN}"
+
+          MAX_WAIT=600  # 10 minutes
+          ELAPSED=0
+
+          while [ $ELAPSED -lt $MAX_WAIT ]; do
+            STATUS=$(aws apprunner describe-service --service-arn "${SERVICE_ARN}" --query 'Service.Status' --output text 2>/dev/null || echo "UNKNOWN")
+
+            echo "Current status: ${STATUS} (${ELAPSED}s elapsed)"
+
+            if [ "$STATUS" == "RUNNING" ]; then
+              echo "✅ Deployment successful!"
+
+              # Get service URL
+              SERVICE_URL=$(aws apprunner describe-service --service-arn "${SERVICE_ARN}" --query 'Service.ServiceUrl' --output text)
+              echo "🌐 Service URL: https://${SERVICE_URL}"
+              exit 0
+            elif [ "$STATUS" == "CREATE_FAILED" ] || [ "$STATUS" == "UPDATE_FAILED" ]; then
+              echo "❌ Deployment failed with status: ${STATUS}"
+              exit 1
+            elif [ "$STATUS" == "OPERATION_IN_PROGRESS" ]; then
+              # Continue waiting
+              sleep 30
+              ELAPSED=$((ELAPSED + 30))
+            else
+              echo "⚠️ Unexpected status: ${STATUS}"
+              sleep 30
+              ELAPSED=$((ELAPSED + 30))
+            fi
+          done
+
+          echo "⏱️ Deployment timed out after ${MAX_WAIT}s"
+          exit 1
