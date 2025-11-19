@@ -2,7 +2,10 @@
 # AWS Bootstrap Infrastructure - Makefile
 # =============================================================================
 
-.PHONY: help bootstrap-create bootstrap-init bootstrap-plan bootstrap-apply bootstrap-output setup-terraform-backend sync-env
+.PHONY: help bootstrap-create bootstrap-init bootstrap-plan bootstrap-apply bootstrap-output setup-terraform-backend sync-env \
+        lint lint-fix format-python typecheck test test-watch pre-commit-all pre-commit-update setup-pre-commit \
+        docker-build docker-build-amd64 docker-push-dev docker-push-test docker-push-prod \
+        format-all clean
 
 # Service folder to use (defaults to 'api')
 SERVICE ?= api
@@ -327,36 +330,36 @@ setup-pre-commit:
 
 lint:
 	@echo "🔍 Checking code quality with Ruff (service: $(SERVICE))..."
-	cd backend/$(SERVICE) && uv run ruff check .
+	uv run ruff check backend/$(SERVICE)
 
 lint-fix:
 	@echo "🔧 Auto-fixing issues with Ruff (service: $(SERVICE))..."
-	cd backend/$(SERVICE) && uv run ruff check --fix .
-	cd backend/$(SERVICE) && uv run ruff format .
+	uv run ruff check --fix backend/$(SERVICE)
+	uv run ruff format backend/$(SERVICE)
 
 format-python:
 	@echo "🎨 Formatting Python code with Ruff (service: $(SERVICE))..."
-	cd backend/$(SERVICE) && uv run ruff format .
+	uv run ruff format backend/$(SERVICE)
 
 typecheck:
 	@echo "🔎 Type checking with Pyright (service: $(SERVICE))..."
-	cd backend/$(SERVICE) && uv run pyright .
+	uv run pyright backend/$(SERVICE)
 
 test:
 	@echo "🧪 Running tests (service: $(SERVICE))..."
-	cd backend/$(SERVICE) && uv run pytest . -v --cov=. --cov-report=term-missing
+	cd backend/$(SERVICE) && PYTHONPATH=. uv run pytest . -v --cov=. --cov-report=term-missing
 
 test-watch:
 	@echo "👀 Running tests in watch mode (service: $(SERVICE))..."
 	cd backend/$(SERVICE) && uv run pytest-watch . -v
 
 pre-commit-all:
-	@echo "🪝 Running pre-commit on all files (service: $(SERVICE))..."
-	cd backend/$(SERVICE) && uv run pre-commit run --all-files
+	@echo "🪝 Running pre-commit on all files..."
+	uv run pre-commit run --all-files
 
 pre-commit-update:
-	@echo "⬆️  Updating pre-commit hooks (service: $(SERVICE))..."
-	cd backend/$(SERVICE) && uv run pre-commit autoupdate
+	@echo "⬆️  Updating pre-commit hooks..."
+	uv run pre-commit autoupdate
 
 # =============================================================================
 # Terraform Utility Commands

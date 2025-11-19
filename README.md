@@ -171,6 +171,7 @@ Click **New repository secret** to cretae these secrets with the values from the
 
 - `AWS_ACCOUNT_ID`
 - `AWS_REGION`
+- `PROJECT_NAME`
 
 Create enviroments in your GitHub repository, in **Settings**/**Environments**:
 
