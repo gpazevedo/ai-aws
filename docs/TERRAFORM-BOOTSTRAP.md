@@ -448,13 +448,13 @@ ecr_repositories = []  # Empty list (recommended)
 **Image tagging strategy with hierarchical tags:**
 ```
 my-project/
-├── backend/dev/api-2025-11-18-16-25-abc1234     # API service (timestamped)
-├── backend/dev/api-latest                       # API service latest
-├── backend/dev/worker-2025-11-18-16-30-def5678  # Worker service
-├── backend/dev/worker-latest                    # Worker service latest
-├── backend/dev/latest                           # Environment latest
-├── backend/prod/api-2025-11-18-16-45-ghi9012    # Prod API
-└── backend/prod/api-latest                      # Prod API latest
+├── api-dev-2025-11-18-16-25-abc1234     # API service (timestamped)
+├── api-dev-latest                       # API service latest
+├── worker-dev-2025-11-18-16-30-def5678  # Worker service
+├── worker-dev-latest                    # Worker service latest
+├── dev-latest                           # Environment latest
+├── api-prod-2025-11-18-16-45-ghi9012    # Prod API
+└── api-prod-latest                      # Prod API latest
 ```
 
 **Benefits of single repository:**
@@ -497,12 +497,12 @@ my-project-eks/
 
 The generated GitHub Actions workflows use a hierarchical tagging convention:
 
-**Format:** `{folder}/{environment}/{service}-{datetime}-{git-sha-short}`
+**Format:** `{service}-{environment}-{datetime}-{git-sha-short}`
 
 **Tags created for each build:**
-1. **Primary tag with timestamp:** `backend/dev/api-2025-11-18-16-25-abc1234` (unique version)
-2. **Service latest:** `backend/dev/api-latest` (latest for this service in this environment)
-3. **Environment latest:** `backend/dev/latest` (latest for any service in this environment)
+1. **Primary tag with timestamp:** `api-dev-2025-11-18-16-25-abc1234` (unique version)
+2. **Service latest:** `api-dev-latest` (latest for this service in this environment)
+3. **Environment latest:** `dev-latest` (latest for any service in this environment)
 
 **Benefits:**
 - **Hierarchical organization:** Images organized by folder structure (backend/api, backend/worker)
@@ -516,18 +516,18 @@ The generated GitHub Actions workflows use a hierarchical tagging convention:
 **Example for multi-service backend:**
 ```
 # API service, dev environment, built on 2025-11-18
-backend/dev/api-2025-11-18-16-25-abc1234
-backend/dev/api-latest
-backend/dev/latest
+api-dev-2025-11-18-16-25-abc1234
+api-dev-latest
+dev-latest
 
 # Worker service, dev environment, built on 2025-11-18
-backend/dev/worker-2025-11-18-16-30-def5678
-backend/dev/worker-latest
-backend/dev/latest  # Same as above, points to latest build
+worker-dev-2025-11-18-16-30-def5678
+worker-dev-latest
+dev-latest  # Same as above, points to latest build
 
 # API service, production environment
-backend/prod/api-2025-11-18-16-45-ghi9012
-backend/prod/api-latest
+api-prod-2025-11-18-16-45-ghi9012
+api-prod-latest
 backend/prod/latest
 ```
 

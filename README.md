@@ -148,7 +148,7 @@ make setup-terraform-lambda   # Generate Lambda app Terraform files
 #   - Automatically detects CPU architecture (x86_64/arm64)
 #   - Auto-installs QEMU if needed for cross-platform builds
 #   - Builds for arm64 (AWS Graviton2)
-#   - Pushes with hierarchical tags: api/dev/*, api/dev/api-latest, api/dev/latest
+#   - Pushes with hierarchical tags: api-dev-*, api-dev-latest, dev-latest
 
 # Step 3: Deploy infrastructure
 make app-init-dev             # Initialize Terraform for dev environment
@@ -157,7 +157,7 @@ make app-apply-dev            # Deploy Lambda function and resources
 make sync-env                 # Sync to .env file (optional)
 ```
 
-This creates Terraform files in `terraform/` for deploying Lambda functions with container images. The Lambda function will reference the image tag `api/dev/latest` from your ECR repository. See [Setting Up Application Infrastructure](docs/TERRAFORM-BOOTSTRAP.md#-setting-up-application-infrastructure) for details.
+This creates Terraform files in `terraform/` for deploying Lambda functions with container images. The Lambda function will reference the image tag `api-dev-latest` from your ECR repository. See [Setting Up Application Infrastructure](docs/TERRAFORM-BOOTSTRAP.md#-setting-up-application-infrastructure) for details.
 
 ### 5. Configure Your GitHub Repository
 
@@ -433,10 +433,10 @@ make docker-build SERVICE=api
 # 1c. Push image to ECR
 make docker-push-dev
 
-# Verify image was pushed successfully (hierarchical tags: api/dev/*)
+# Verify image was pushed successfully (hierarchical tags: api-dev-*)
 aws ecr describe-images \
   --repository-name my-project \
-  --query 'imageDetails[?imageTags[?contains(@, `api/dev`)]]'
+  --query 'imageDetails[?imageTags[?contains(@, `api-dev`)]]'
 
 # ============================================================================
 # STEP 2: Deploy Infrastructure with Terraform
@@ -465,7 +465,7 @@ curl -X POST $LAMBDA_URL \
 **Important:**
 - You must have AWS credentials configured locally
 - **⚠️ Docker image MUST exist in ECR before running `make app-apply-dev`**
-  - The Lambda function will reference: `{ecr-repo}:api/dev/latest`
+  - The Lambda function will reference: `{ecr-repo}:api-dev-latest`
   - Build and push first: `make docker-build && make docker-push-dev`
   - Or deploy via GitHub Actions (recommended)
 - Use GitHub Actions for production deployments
@@ -770,23 +770,23 @@ make docker-push-dev SERVICE=worker
 
 Images are tagged with a hierarchical naming scheme that includes the service folder:
 
-**Format:** `{folder}/{env}/{folder}-{datetime}-{sha}`
+**Format:** `{service}-{env}-{datetime}-{sha}`
 
 **Example for API service in dev:**
 ```
-backend/api → my-project:backend/dev/api-2025-11-18-16-25-abc1234
+backend/api → my-project:api-dev-2025-11-18-16-25-abc1234
 ```
 
 **Three tags are created per build:**
 
 1. **Primary tag with timestamp:**
-   - `backend/dev/api-2025-11-18-16-25-abc1234` (unique, timestamped version)
+   - `api-dev-2025-11-18-16-25-abc1234` (unique, timestamped version)
 
 2. **Service latest:**
-   - `backend/dev/api-latest` (latest build for API in dev)
+   - `api-dev-latest` (latest build for API in dev)
 
 3. **Environment latest:**
-   - `backend/dev/latest` (latest build for any service in dev)
+   - `dev-latest` (latest build for any service in dev)
 
 **Benefits:**
 - **Hierarchical organization:** Images are organized by folder structure
@@ -805,7 +805,7 @@ When building multi-service containers, the `SERVICE_FOLDER` build argument is a
 docker build \
   --build-arg SERVICE_FOLDER=backend/api \
   -f backend/api/Dockerfile.lambda \
-  -t my-project:backend/dev/api-latest \
+  -t my-project:api-dev-latest \
   backend/api
 ```
 
@@ -833,9 +833,9 @@ To add a new service (e.g., "scheduler"):
    ```
 
 4. **Images will be tagged as:**
-   - `backend/dev/scheduler-2025-11-18-16-25-abc1234`
-   - `backend/dev/scheduler-latest`
-   - `backend/dev/latest`
+   - `scheduler-dev-2025-11-18-16-25-abc1234`
+   - `scheduler-dev-latest`
+   - `dev-latest`
 
 ---
 

@@ -181,10 +181,11 @@ echo -e "${BLUE}🏗️  Building Docker image for ${TARGET_ARCH}...${NC}"
 TIMESTAMP=$(date -u +%Y-%m-%d-%H-%M)
 GIT_SHA=$(git rev-parse --short HEAD 2>/dev/null || echo "local")
 
-# Hierarchical tag format: service/environment/service-datetime-sha
-PRIMARY_TAG="${SERVICE}/${ENVIRONMENT}/${SERVICE}-${TIMESTAMP}-${GIT_SHA}"
-SERVICE_LATEST_TAG="${SERVICE}/${ENVIRONMENT}/${SERVICE}-latest"
-ENV_LATEST_TAG="${SERVICE}/${ENVIRONMENT}/latest"
+# Hierarchical tag format: service-environment-datetime-sha
+# Note: Using hyphens instead of slashes (Docker tags cannot contain /)
+PRIMARY_TAG="${SERVICE}-${ENVIRONMENT}-${TIMESTAMP}-${GIT_SHA}"
+SERVICE_LATEST_TAG="${SERVICE}-${ENVIRONMENT}-latest"
+ENV_LATEST_TAG="${ENVIRONMENT}-latest"
 
 echo "   Service folder: backend/${SERVICE}"
 echo "   Target architecture: ${TARGET_ARCH}"

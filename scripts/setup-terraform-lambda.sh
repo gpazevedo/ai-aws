@@ -181,8 +181,8 @@ resource "aws_lambda_function" "api" {
 
   # Container image configuration
   package_type = "Image"
-  # Using hierarchical tag format: api/{environment}/latest
-  image_uri    = "${data.aws_ecr_repository.app.repository_url}:api/${var.environment}/latest"
+  # Using hierarchical tag format: api-{environment}-latest
+  image_uri    = "${data.aws_ecr_repository.app.repository_url}:api-${var.environment}-latest"
 
   # Resource configuration
   memory_size = var.lambda_memory_size

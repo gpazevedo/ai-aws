@@ -172,8 +172,8 @@ make docker-push-prod
 3. Authenticates to Amazon ECR
 4. Builds Docker image with `--build-arg SERVICE_FOLDER` parameter
 5. Creates multiple hierarchical tags:
-   - `{folder}/{env}/{service}-{datetime}-{sha}` - Unique build tag with timestamp
-   - `{folder}/{env}/{service}-latest` - Latest for this service
+   - `{service}-{env}-{datetime}-{sha}` - Unique build tag with timestamp
+   - `{service}-{env}-latest` - Latest for this service
    - `{folder}/{env}/latest` - Latest for environment
 6. Pushes all tags to ECR
 
@@ -195,9 +195,9 @@ The script now uses a hierarchical tagging scheme:
 
 **Example for backend/api service in dev:**
 ```
-backend/dev/api-2025-11-18-16-25-abc1234  # Primary: folder/env/service-datetime-sha
-backend/dev/api-latest                    # Service latest
-backend/dev/latest                        # Environment latest
+api-dev-2025-11-18-16-25-abc1234  # Primary: folder/env/service-datetime-sha
+api-dev-latest                    # Service latest
+dev-latest                        # Environment latest
 ```
 
 **Example output**:
@@ -225,9 +225,9 @@ backend/dev/latest                        # Environment latest
 ✅ Successfully pushed images to ECR!
 
 📋 Image URIs:
-   123456789012.dkr.ecr.us-east-1.amazonaws.com/my-api:backend/dev/api-2025-11-18-16-25-abc1234
-   123456789012.dkr.ecr.us-east-1.amazonaws.com/my-api:backend/dev/api-latest
-   123456789012.dkr.ecr.us-east-1.amazonaws.com/my-api:backend/dev/latest
+   123456789012.dkr.ecr.us-east-1.amazonaws.com/my-api:api-dev-2025-11-18-16-25-abc1234
+   123456789012.dkr.ecr.us-east-1.amazonaws.com/my-api:api-dev-latest
+   123456789012.dkr.ecr.us-east-1.amazonaws.com/my-api:dev-latest
 ```
 
 ---
@@ -273,9 +273,9 @@ make setup-workflows
 - ✅ Deploys to appropriate service (Lambda/App Runner/EKS)
 - ✅ Environment-specific (dev, test, production)
 - ✅ **Hierarchical image tagging strategy:**
-  - Primary tag: `{folder}/{env}/{service}-{datetime}-{git-sha}` (e.g., `backend/dev/api-2025-11-18-16-25-abc1234`)
-  - Service latest: `{folder}/{env}/{service}-latest` (e.g., `backend/dev/api-latest`)
-  - Environment latest: `{folder}/{env}/latest` (e.g., `backend/dev/latest`)
+  - Primary tag: `{service}-{env}-{datetime}-{git-sha}` (e.g., `api-dev-2025-11-18-16-25-abc1234`)
+  - Service latest: `{service}-{env}-latest` (e.g., `api-dev-latest`)
+  - Environment latest: `{folder}/{env}/latest` (e.g., `dev-latest`)
 - ✅ Single ECR repository with hierarchical tags (recommended)
 - ✅ Multi-service support via SERVICE_FOLDER build argument
 - ✅ Timestamp-based versioning for precise tracking
@@ -342,7 +342,7 @@ The script automatically detects your ECR configuration:
 
 | ECR Configuration | Tagging Strategy |
 |-------------------|------------------|
-| `ecr_repositories = []` (recommended) | Single repo with hierarchical tags (`backend/dev/api-latest`) |
+| `ecr_repositories = []` (recommended) | Single repo with hierarchical tags (`api-dev-latest`) |
 | `ecr_repositories = ["lambda", "eks"]` (legacy) | Separate repos with flat tags (`dev-api-latest`) |
 
 **Modern approach (single repository):**
@@ -353,22 +353,22 @@ ecr_repositories = []  # Recommended
 
 All services use single repository with hierarchical tags:
 - Repository: `123456789.dkr.ecr.us-east-1.amazonaws.com/my-project`
-- Tags: `backend/dev/api-2025-11-18-16-25-abc1234`, `backend/dev/worker-latest`, etc.
+- Tags: `api-dev-2025-11-18-16-25-abc1234`, `worker-dev-latest`, etc.
 
 **Image Tagging in Generated Workflows**:
 
 All generated workflows create three hierarchical tags per build:
 ```bash
 # Example for backend/api service, commit abc1234, environment "dev", built on 2025-11-18 at 16:25
-backend/dev/api-2025-11-18-16-25-abc1234  # Primary: folder/env/service-datetime-gitsha[0:7]
-backend/dev/api-latest                    # Latest for API service in dev
-backend/dev/latest                        # Latest for any service in dev
+api-dev-2025-11-18-16-25-abc1234  # Primary: folder/env/service-datetime-gitsha[0:7]
+api-dev-latest                    # Latest for API service in dev
+dev-latest                        # Latest for any service in dev
 ```
 
 Benefits:
 - **Hierarchical organization:** Images grouped by folder/environment/service
 - **Timestamp precision:** Exact build time for debugging and auditing
-- **Easy rollback:** Use `backend/dev/api-latest` to rollback to last known good
+- **Easy rollback:** Use `api-dev-latest` to rollback to last known good
 - **Version tracking:** Git SHA in tag allows tracing to source code
 - **Environment safety:** Environment prefix prevents deploying dev to prod
 - **Multi-service support:** Clear separation between api, worker, and other services
@@ -391,7 +391,7 @@ env:
 env:
   SERVICE_FOLDER: backend/worker  # Custom
 
-# Results in tags like: backend/dev/worker-2025-11-18-16-25-abc1234
+# Results in tags like: worker-dev-2025-11-18-16-25-abc1234
 ```
 
 ---
@@ -428,14 +428,14 @@ All build scripts and workflows use the `SERVICE_FOLDER` build argument to:
 docker build \
   --build-arg SERVICE_FOLDER=backend/api \
   -f backend/api/Dockerfile.lambda \
-  -t my-project:backend/dev/api-latest \
+  -t my-project:api-dev-latest \
   backend/api
 
 # Build worker service
 docker build \
   --build-arg SERVICE_FOLDER=backend/worker \
   -f backend/worker/Dockerfile.lambda \
-  -t my-project:backend/dev/worker-latest \
+  -t my-project:worker-dev-latest \
   backend/worker
 ```
 
@@ -445,20 +445,20 @@ All services share one ECR repository but are organized hierarchically:
 
 ```
 my-project/  (single ECR repository)
-├── backend/dev/api-2025-11-18-16-25-abc1234
-├── backend/dev/api-latest
-├── backend/dev/worker-2025-11-18-16-30-def5678
-├── backend/dev/worker-latest
-├── backend/dev/latest                          # Points to most recent build
-├── backend/prod/api-2025-11-18-16-45-ghi9012
-└── backend/prod/api-latest
+├── api-dev-2025-11-18-16-25-abc1234
+├── api-dev-latest
+├── worker-dev-2025-11-18-16-30-def5678
+├── worker-dev-latest
+├── dev-latest                          # Points to most recent build
+├── api-prod-2025-11-18-16-45-ghi9012
+└── api-prod-latest
 ```
 
 **Benefits:**
 - **Single repository:** Simpler IAM permissions and lifecycle policies
 - **Clear organization:** Folder structure mirrors code structure
 - **Service isolation:** Each service has its own tags
-- **Easy deployment:** Deploy specific service with `backend/dev/api-latest`
+- **Easy deployment:** Deploy specific service with `api-dev-latest`
 - **Rollback support:** Service-specific rollback with `-latest` tags
 - **Audit trail:** Timestamp and git SHA in every tag
 
