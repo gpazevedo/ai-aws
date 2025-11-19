@@ -122,7 +122,6 @@ aws sts get-caller-identity  # Verify AWS credentials
 ```bash
 make bootstrap-create          # Create S3 state bucket
 make bootstrap-init            # Initialize Terraform
-make bootstrap-plan            # Review changes
 make bootstrap-apply           # Deploy infrastructure
 ```
 
@@ -152,14 +151,25 @@ make setup-terraform-lambda   # Generate Lambda app Terraform files
 
 # Step 3: Deploy infrastructure
 make app-init-dev             # Initialize Terraform for dev environment
-make app-plan-dev             # Review what will be created
 make app-apply-dev            # Deploy Lambda function and resources
-make sync-env                 # Sync to .env file (optional)
 ```
 
-This creates Terraform files in `terraform/` for deploying Lambda functions with container images. The Lambda function will reference the image tag `api-dev-latest` from your ECR repository. See [Setting Up Application Infrastructure](docs/TERRAFORM-BOOTSTRAP.md#-setting-up-application-infrastructure) for details.
+### 5. Test Lambda
 
-### 5. Configure Your GitHub Repository
+Now that the image repository (ECR) has an image of our Lambda function,
+and all resources associated with the Lambda are deployed,
+the lambda function can be called directly:
+
+```bash
+LAMBDA_URL=$(cd terraform && terraform output -raw lambda_function_url)
+curl $LAMBDA_URL
+```
+The result should be:
+```bash
+{"message":"Hello, World!","version":"0.1.0"}
+```
+
+### 6. Configure Your GitHub Repository
 
 Get outputs for GitHub:
 ```bash
@@ -184,7 +194,7 @@ Click **New environment** and define "production" and click **Configure environm
 
 **Done!** Your AWS infrastructure is ready for CI/CD deployments.
 
-### 6. Quality Check Before Commits
+### 7. Quality Check Before Commits
 
 Setup pre-commit hooks for automated code quality checks:
 
@@ -230,7 +240,7 @@ make typecheck     # Run type checking
 make test          # Run tests
 ```
 
-### 7. Generate GitHub Actions workflows
+### 8. Generate GitHub Actions workflows
 
 ```bash
 make setup-workflows
