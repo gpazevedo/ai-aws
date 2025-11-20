@@ -12,17 +12,23 @@ on:
           - dev
           - production
           - test
+      services:
+        description: 'Services to deploy (comma-separated, "all", or leave empty for change detection)'
+        required: false
+        default: ''
+        type: string
   push:
     branches: [main]
     paths:
       - 'backend/**'
+
 env:
-  PROJECT_NAME: ${{ secrets.PROJECT_NAME }}
+  PROJECT_NAME: ${{ vars.PROJECT_NAME }}
   AWS_ACCOUNT_ID: ${{ secrets.AWS_ACCOUNT_ID }}
-  AWS_REGION: ${{ secrets.AWS_REGION }}
+  AWS_REGION: ${{ vars.AWS_REGION }}
   ENVIRONMENT: ${{ inputs.environment || 'dev' }}
   # Array of services to deploy (only these services will be deployed as App Runner if changed)
-  APPRUNNER_SERVICES: ${{ vars.APPRUNNER_SERVICES }}
+  APPRUNNER_SERVICES: ${{ vars.APPRUNNER_SERVICES || '[]' }}
 
 jobs:
   # Detect which services changed
@@ -40,40 +46,55 @@ jobs:
         run: |
           echo "APPRUNNER_SERVICES configuration: $APPRUNNER_SERVICES"
 
-          # Parse APPRUNNER_SERVICES array
-          SERVICES_ARRAY=$(echo "$APPRUNNER_SERVICES" | jq -c '.')
+          # Parse APPRUNNER_SERVICES array - fix for jq parsing
+          SERVICES_ARRAY=$(printf '%s' "$APPRUNNER_SERVICES" | jq -c '.')
           echo "Services to check: $SERVICES_ARRAY"
 
-          # Detect changed files
-          if [ "${{ github.event_name }}" == "push" ]; then
-            CHANGED_FILES=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} || echo "")
-          else
-            # For workflow_dispatch, check against main branch
-            CHANGED_FILES=$(git diff --name-only origin/main HEAD || echo "")
-          fi
+          # Check if this is a manual trigger with service selection
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ] && [ -n "${{ inputs.services }}" ]; then
+            echo "Manual deployment triggered"
 
-          echo "Changed files:"
-          echo "$CHANGED_FILES"
-
-          # Find which services from APPRUNNER_SERVICES have changes
-          CHANGED_SERVICES="[]"
-
-          for service in $(echo "$SERVICES_ARRAY" | jq -r '.[]'); do
-            echo "Checking service: $service"
-
-            # Check if this service has changes in:
-            # - backend/$service/**
-            if echo "$CHANGED_FILES" | grep -qE "(^backend/$service/)"; then
-              echo "  ✓ Service $service has changes"
-              CHANGED_SERVICES=$(echo "$CHANGED_SERVICES" | jq -c ". + [\"$service\"]")
+            if [ "${{ inputs.services }}" == "all" ]; then
+              echo "Deploying ALL services"
+              CHANGED_SERVICES="$SERVICES_ARRAY"
             else
-              echo "  ✗ Service $service has no changes"
+              echo "Deploying selected services: ${{ inputs.services }}"
+              # Convert comma-separated string to JSON array
+              CHANGED_SERVICES=$(echo "${{ inputs.services }}" | jq -Rc 'split(",") | map(gsub("^\\s+|\\s+$";""))')
             fi
-          done
+          else
+            # Auto-detect changed files
+            echo "Auto-detecting changed services"
+
+            if [ "${{ github.event_name }}" == "push" ]; then
+              CHANGED_FILES=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} || echo "")
+            else
+              # For workflow_dispatch without service selection, check against main branch
+              CHANGED_FILES=$(git diff --name-only origin/main HEAD || echo "")
+            fi
+
+            echo "Changed files:"
+            echo "$CHANGED_FILES"
+
+            # Find which services from APPRUNNER_SERVICES have changes
+            CHANGED_SERVICES="[]"
+
+            for service in $(echo "$SERVICES_ARRAY" | jq -r '.[]'); do
+              echo "Checking service: $service"
+
+              # Check if this service has changes in:
+              # - backend/$service/**
+              if echo "$CHANGED_FILES" | grep -qE "(^backend/$service/)"; then
+                echo "  ✓ Service $service has changes"
+                CHANGED_SERVICES=$(echo "$CHANGED_SERVICES" | jq -c ". + [\"$service\"]")
+              else
+                echo "  ✗ Service $service has no changes"
+              fi
+            done
+          fi
 
           echo "Services to deploy: $CHANGED_SERVICES"
           echo "services=$CHANGED_SERVICES" >> $GITHUB_OUTPUT
-
 
   deploy:
     needs: detect-changes

@@ -1,8 +1,6 @@
 # AWS Bootstrap Infrastructure
 
 > **A starter for Python cloud applications on AWS**
->
-> Complete, modular infrastructure with Lambda, App Runner, or EKS. Start simple with serverless, scale to Kubernetes when needed.
 
 A production-ready Infrastructure as Code (IaC) template for bootstrapping AWS projects. Supports Python 3.13 with `uv` for fast dependency management, GitHub Actions CI/CD via OIDC, and Terraform state management in S3.
 
@@ -13,7 +11,6 @@ A production-ready Infrastructure as Code (IaC) template for bootstrapping AWS p
 ### Compute Options (Choose Your Stack)
 - **✅ Lambda** - Serverless functions with container images (default)
 - **🌐 App Runner** - Fully managed containerized web applications
-- **☸️ EKS** - Complete Kubernetes cluster with auto-scaling and ALB ingress
 
 ### Core Capabilities
 - **📦 Python 3.13 + uv** - Latest Python with ultra-fast dependency management
@@ -21,7 +18,6 @@ A production-ready Infrastructure as Code (IaC) template for bootstrapping AWS p
 - **🗄️ S3 State Management** - Self-referencing Terraform state with locking
 - **🎯 Multi-Environment** - Dev, test, and prod environments
 - **🐳 Container-Ready** - ECR repositories with vulnerability scanning
-- **🌐 Optional VPC** - Private networking for EKS or App Runner
 
 ### Infrastructure Included
 - S3 bucket for Terraform state (versioned, encrypted)
@@ -30,8 +26,6 @@ A production-ready Infrastructure as Code (IaC) template for bootstrapping AWS p
 - ECR repositories (conditional)
 - Lambda execution roles (conditional)
 - App Runner access & instance roles (conditional)
-- EKS cluster with node groups (conditional)
-- VPC with public/private subnets (conditional)
 
 ---
 
@@ -59,8 +53,7 @@ A production-ready Infrastructure as Code (IaC) template for bootstrapping AWS p
 │  │  • S3 State Bucket (versioned, encrypted)              │   │
 │  │  • GitHub OIDC Provider                                │   │
 │  │  • IAM Roles (dev, test, prod)                         │   │
-│  │  • ECR Repositories (if containers enabled)            │   │
-│  │  • VPC & Networking (if EKS enabled)                   │   │
+│  │  • ECR Repositories                                │   │
 │  └────────────────────────────────────────────────────────┘   │
 │                                                               │
 │  ┌────────────────────────────────────────────────────────┐   │
@@ -68,7 +61,6 @@ A production-ready Infrastructure as Code (IaC) template for bootstrapping AWS p
 │  │                                                        │   │
 │  │  • Lambda Functions (if enabled)                       │   │
 │  │  • App Runner Services (if enabled)                    │   │
-│  │  • EKS Workloads (if enabled)                          │   │
 │  └────────────────────────────────────────────────────────┘   │
 └───────────────────────────────────────────────────────────────┘
 ```
@@ -171,26 +163,34 @@ The result should be:
 
 ### 6. Configure Your GitHub Repository
 
-Get outputs for GitHub:
+Get your AWS_ACCOUNT_ID:
+
 ```bash
-make bootstrap-output  # Shows role ARNs, bucket names, etc.
+$(aws sts get-caller-identity --query Account --output text)
 ```
 
 Add to your GitHub repository secrets, in **Settings**/**Secrets and variables**/**Actions**:
 Click **New repository secret** to cretae these secrets with the values from the outputs:
 
-- `AWS_ACCOUNT_ID`
-- `AWS_REGION`
-- `PROJECT_NAME`
+- `AWS_ACCOUNT_ID`    # Your aws account number
+
+Add to your GitHub repository variables, in **Settings**/**Secrets and variables**/**Actions**:
+Click **New repository variable** to cretae these variables with the values from the outputs:
+
+- `AWS_REGION`          # Your aws region: us-east-1
+- `PROJECT_NAME`        # Your project
+- `LAMBDAS`             # Your lambdas: ["api"]
+- `APPRUNNER_SERVICES`  # []
+
 
 Create enviroments in your GitHub repository, in **Settings**/**Environments**:
 
 Click **New environment** and define "dev" and click **Configure environment**, click **Add environment secret** and define:
-- `AWS_ROLE_ARN_DEV` (from bootstrap output)
+- `AWS_ROLE_ARN_DEV`  # arn:aws:iam::<AWS_ACCOUNT_ID>>:role/ai-aws-github-actions-dev
 
-Click **New environment** and define "production" and click **Configure environment**, click **Add environment secret** and define:
+Click **New environment** and define "prod" and click **Configure environment**, click **Add environment secret** and define:
 
-- `AWS_ROLE_ARN_PROD` (from bootstrap output)
+- `AWS_ROLE_ARN_PROD` # arn:aws:iam::<AWS_ACCOUNT_ID>>:role/ai-aws-github-actions-prod
 
 **Done!** Your AWS infrastructure is ready for CI/CD deployments.
 
@@ -240,18 +240,6 @@ make typecheck     # Run type checking
 make test          # Run tests
 ```
 
-### 8. Generate GitHub Actions workflows
-
-```bash
-make setup-workflows
-```
-
-Now the repository includes GitHub Actions workflows that automatically:
-- Build Docker images
-- Push to ECR
-- Deploy to Lambda/App Runner/EKS
-- Run tests
-
 ---
 
 ## 🧪 Testing & Deployment
@@ -260,7 +248,17 @@ Now the repository includes GitHub Actions workflows that automatically:
 
 Edit backend/api/pyproject.toml and change project name from my-project to your project name.
 
-#### 1. Test Python Backend Locally
+#### 1. Run Unit Tests
+
+Configure in your IDE, "pytest" as your Test Framework.
+Install pytest if necessary.
+
+```bash
+# Run unit tests
+make test
+```
+
+#### 2. Test Python Backend Locally
 
 ```bash
 cd backend/api
@@ -289,14 +287,6 @@ print("Lambda Response:", result)
 EOF
 
 uv run python test_local.py
-```
-
-#### 2. Run Unit Tests
-
-```bash
-# Run unit tests
-cd ..
-make test
 ```
 
 #### 3. Test Lambda Container Locally (Docker)
