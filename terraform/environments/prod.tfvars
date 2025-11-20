@@ -5,13 +5,13 @@
 # Customize these values for your prod environment
 # =============================================================================
 
-project_name = "aws-ai"
+project_name = "ai-aws"
 environment  = "prod"
 aws_region   = "us-east-1"
-github_repo  = "gpazevedo/aws-ai"  # From bootstrap configuration
+github_repo  = "gpazevedo/ai-aws"  # From bootstrap configuration
 
 # ECR Repository (created by bootstrap)
-ecr_repository_name = "aws-ai"  # Must match bootstrap configuration
+ecr_repository_name = "ai-aws"  # Must match bootstrap configuration
 
 # Lambda Configuration
 lambda_memory_size  = 1024

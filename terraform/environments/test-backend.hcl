@@ -5,7 +5,7 @@
 # Do not edit manually - regenerate from bootstrap outputs
 # =============================================================================
 
-bucket       = "aws-ai-terraform-state-234876310489"
+bucket       = "ai-aws-terraform-state-234876310489"
 key          = "environments/test/terraform.tfstate"
 region       = "us-east-1"
 encrypt      = true
